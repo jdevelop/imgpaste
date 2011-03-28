@@ -5,6 +5,7 @@ import Network.Curl
 import Data.ByteString
 import Text.Regex.PCRE
 import Text.Regex.PCRE.ByteString
+import System.Posix
 
 type LocalCtx = ( ByteString, ByteString, ByteString, [ByteString] )
 type UploadResult = Either UploadError ByteString
@@ -21,24 +22,28 @@ uploadFile fileName = initialize >>= withCurlDo . (flip uploadFileWithCurl fileN
 
 uploadFileWithCurl :: Curl -> String -> IO ( ByteString )
 uploadFileWithCurl curl fileName = do
-    liftM extractResponse $ do_curl_ curl "http://imgpaste.com/" 
-        [CurlPost True, CurlHttpPost postData, CurlVerbose True ]
+    res <- liftM extractResponse $ do_curl_ curl "http://imgpaste.com/" 
+        [
+            CurlVerbose False, 
+            CurlHttpHeaders [
+                "Expect: "
+                ],
+            CurlHttpPost postData
+        ]
+    return res
     where
         postData = [
---            HttpPost "upfile" 
---                Nothing
---                ( ContentFile fileName ) 
---                []
---                Nothing
-            makeFormPost "submit" "Upload",
+            HttpPost "uplfile" 
+                (Just "image/jpeg")
+                ( ContentFile fileName ) 
+                []
+                Nothing,
             makeFormPost "keep" "a"
             ]
-        makeFormPost name value = HttpPost name Nothing 
+        makeFormPost name value = HttpPost name Nothing
             (ContentString value)
             []
             Nothing
-
--- <input type="text" name="copyfield" size="31" value="http://imgpaste.com/tmp/yvtul.png" />
 
 extractUrl :: ByteString -> UploadResult
 extractUrl src = match (src =~ "<input type=\"text\" name=\"copyfield\" size=\"31\" value=\"([^\"]+?)\" />" :: LocalCtx)
