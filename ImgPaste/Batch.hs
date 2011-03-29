@@ -6,6 +6,7 @@ import Data.ByteString.Char8 as C8 hiding (putStrLn)
 import Control.Monad
 import Data.List as DL
 import Data.Either
+import IO
 
 type BatchUploadResult = Either String [ByteString]
 
@@ -17,7 +18,7 @@ uploadFilesBatch path f =
                 mapM uploadImageWithStatus
         where
             uploadImageWithStatus img = do
-                putStrLn $ "Processing image " ++ img
+                IO.hPutStrLn stderr $ "Processing image " ++ img
                 f `fmap` pasteImage img
             basePath = path ++ "/"
             listFiles = DL.map ( (++) basePath ) . DL.filter (\x -> x /= "." && x /= ".." )
