@@ -17,12 +17,12 @@ data UploadError = UploadError {
 extractResponse :: CurlResponse_ [(String,String)] ByteString -> ByteString
 extractResponse = respBody
 
-uploadFile :: String -> IO (ByteString)
-uploadFile fileName = initialize >>= withCurlDo . (flip uploadFileWithCurl fileName)
+uploadFile :: String -> IO ByteString
+uploadFile fileName = initialize >>= withCurlDo . (`uploadFileWithCurl` fileName)
 
-uploadFileWithCurl :: Curl -> String -> IO ( ByteString )
-uploadFileWithCurl curl fileName = do
-    res <- liftM extractResponse $ do_curl_ curl "http://imgpaste.com/" 
+uploadFileWithCurl :: Curl -> String -> IO ByteString
+uploadFileWithCurl curl fileName =
+    liftM extractResponse $ do_curl_ curl "http://imgpaste.com/" 
         [
             CurlVerbose False, 
             CurlHttpHeaders [
@@ -30,7 +30,6 @@ uploadFileWithCurl curl fileName = do
                 ],
             CurlHttpPost postData
         ]
-    return res
     where
         postData = [
             HttpPost "uplfile" 
@@ -51,6 +50,6 @@ extractUrl src = match (src =~ "<input type=\"text\" name=\"copyfield\" size=\"3
         match (_,_,_,[x]) = Right x
         match _ = Left $ UploadError "Can not parse content." src
 
-pasteImage :: String -> IO ( UploadResult )
+pasteImage :: String -> IO UploadResult
 pasteImage = liftM extractUrl . uploadFile
 

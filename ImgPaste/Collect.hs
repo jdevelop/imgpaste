@@ -10,4 +10,4 @@ collectImageTags path = filterAndConcat `fmap`
     where
         wrapWithTag ( Right img ) = "<img src=\"" ++ C8.unpack img ++ "\"/>"
         wrapWithTag _ = ""
-        filterAndConcat = DL.concatMap ( ++ "\n" ) . DL.filter ( /= "" )
+        filterAndConcat = DL.concatMap ( ++ "\n\n" ) . DL.filter ( /= "" )
