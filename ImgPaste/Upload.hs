@@ -50,6 +50,6 @@ extractUrl src = match (src =~ "<input type=\"text\" name=\"copyfield\" size=\"3
         match (_,_,_,[x]) = Right x
         match _ = Left $ UploadError "Can not parse content." src
 
-pasteImage :: String -> IO UploadResult
-pasteImage = liftM extractUrl . uploadFile
+pasteImage :: Curl -> String -> IO UploadResult
+pasteImage curl path = liftM extractUrl $ uploadFileWithCurl curl path
 
