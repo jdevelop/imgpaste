@@ -1,55 +1,56 @@
 module ImgPaste.Upload where
 
+import ImgPaste.Entity
 import Control.Monad
 import Network.Curl
-import Data.ByteString
+import Data.ByteString.Char8
 import Text.Regex.PCRE
 import Text.Regex.PCRE.ByteString
 import System.Posix
 
-type LocalCtx = ( ByteString, ByteString, ByteString, [ByteString] )
-type UploadResult = Either UploadError ByteString
-data UploadError = UploadError {
-    message :: String,
-    response :: ByteString 
-} deriving (Show)
-
 extractResponse :: CurlResponse_ [(String,String)] ByteString -> ByteString
 extractResponse = respBody
 
-uploadFile :: String -> IO ByteString
-uploadFile fileName = initialize >>= withCurlDo . (`uploadFileWithCurl` fileName)
-
-uploadFileWithCurl :: Curl -> String -> IO ByteString
-uploadFileWithCurl curl fileName =
-    liftM extractResponse $ do_curl_ curl "http://imgpaste.com/" 
+uploadFileWithCurl :: Curl -> String -> ByteString -> IO ByteString
+uploadFileWithCurl curl fileName key =
+    liftM extractResponse $ do_curl_ curl "http://imgpaste.com/upload/" 
         [
             CurlVerbose False, 
             CurlHttpHeaders [
                 "Expect: "
                 ],
-            CurlHttpPost postData
+            CurlHttpPost postData,
+            CurlCookie ("csrftoken="++keyStr)
         ]
     where
         postData = [
-            HttpPost "uplfile" 
+            HttpPost "file" 
                 (Just "image/jpeg")
                 ( ContentFile fileName ) 
                 []
                 Nothing,
-            makeFormPost "keep" "a"
+            makeFormPost "submit" "Send",
+            makeFormPost "csrfmiddlewaretoken" keyStr
             ]
         makeFormPost name value = HttpPost name Nothing
             (ContentString value)
             []
             Nothing
+        keyStr = unpack key
+
+getFormKey :: Curl -> IO ByteString
+getFormKey curl = (fKey . extractResponse ) `fmap` do_curl_ curl "http://imgpaste.com/" [CurlVerbose False]
+    where
+        fKey src = match (src =~ "<input type='hidden' name='csrfmiddlewaretoken' value='([^\"]+?)' />" :: LocalCtx)
+        match (_,_,_,[key]) = key
+        match _ = error "Can not parse data"
 
 extractUrl :: ByteString -> UploadResult
-extractUrl src = match (src =~ "<input type=\"text\" name=\"copyfield\" size=\"31\" value=\"([^\"]+?)\" />" :: LocalCtx)
+extractUrl src = match (src =~ "<input type=\"text\" name=\"field\" value=\"([^\"]+?)\" />" :: LocalCtx)
     where 
         match (_,_,_,[x]) = Right x
-        match _ = Left $ UploadError "Can not parse content." src
+        match _ = error "Can not parse data"
 
 pasteImage :: Curl -> String -> IO UploadResult
-pasteImage curl path = liftM extractUrl $ uploadFileWithCurl curl path
+pasteImage curl path = liftM extractUrl $ getFormKey curl >>= uploadFileWithCurl curl path 
 

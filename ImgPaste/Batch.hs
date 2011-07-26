@@ -1,5 +1,6 @@
 module ImgPaste.Batch where
 
+import ImgPaste.Entity
 import ImgPaste.Upload
 import System.Directory
 import Data.ByteString.Char8 as C8 hiding (putStrLn)
