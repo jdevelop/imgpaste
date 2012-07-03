@@ -1,10 +1,7 @@
 module ImgPaste.Entity where
 
-import Data.ByteString
-
-type LocalCtx = ( ByteString, ByteString, ByteString, [ByteString] )
-type UploadResult = Either UploadError ByteString
+type UploadResult = Either UploadError String
 data UploadError = UploadError {
     message :: String,
-    response :: ByteString 
+    response :: String 
 } deriving (Show)
